@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder Example</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-lg w-full text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Audio Recorder</h1>
+
+        <div class="flex justify-center space-x-4 mb-8">
+            <button id="recordButton" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                Start Recording
+            </button>
+            <button id="stopButton" disabled class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 opacity-50 cursor-not-allowed">
+                Stop Recording
+            </button>
+        </div>
+
+        <audio id="audioPlayback" controls class="w-full h-12 mb-6 rounded-md shadow-inner bg-gray-200"></audio>
+
+        <a id="downloadLink" style="display:none;" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 no-underline">
+            Download Audio
+        </a>
+
+        <div id="messageBox" class="hidden mt-6 p-3 rounded-md text-sm"></div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let mediaStream;
+
+        const recordButton = document.getElementById('recordButton');
+        const stopButton = document.getElementById('stopButton');
+        const audioPlayback = document.getElementById('audioPlayback');
+        const downloadLink = document.getElementById('downloadLink');
+        const messageBox = document.getElementById('messageBox');
+
+        // Updates button states and styling
+        const updateButtonStates = (isRecording) => {
+            recordButton.disabled = isRecording;
+            stopButton.disabled = !isRecording;
+            recordButton.classList.toggle('opacity-50', isRecording);
+            recordButton.classList.toggle('cursor-not-allowed', isRecording);
+            stopButton.classList.toggle('opacity-50', !isRecording);
+            stopButton.classList.toggle('cursor-not-allowed', !isRecording);
+        };
+
+        // Displays a message to the user
+        const showMessage = (msg, type) => {
+            messageBox.textContent = msg;
+            messageBox.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
+            if (type === 'success') messageBox.classList.add('bg-green-100', 'text-green-800');
+            else if (type === 'error') messageBox.classList.add('bg-red-100', 'text-red-800');
+            else messageBox.classList.add('bg-blue-100', 'text-blue-800');
+            messageBox.classList.remove('hidden');
+        };
+
+        recordButton.onclick = async () => {
+            messageBox.classList.add('hidden');
+            audioChunks = [];
+            audioPlayback.src = '';
+            downloadLink.style.display = 'none';
+
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(mediaStream);
+
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = audioUrl;
+                    downloadLink.href = audioUrl;
+                    downloadLink.download = 'recorded_audio.webm';
+                    downloadLink.style.display = 'inline-block';
+                    showMessage('Recording finished!', 'success');
+                    mediaStream.getTracks().forEach(track => track.stop()); // Stop microphone
+                };
+
+                mediaRecorder.start();
+                updateButtonStates(true);
+                showMessage('Recording started...', 'info');
+
+            } catch (error) {
+                console.error('Mic error:', error);
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    showMessage('Microphone access denied. Allow permissions.', 'error');
+                } else {
+                    showMessage(`Error: ${error.message}`, 'error');
+                }
+                updateButtonStates(false);
+            }
+        };
+
+        stopButton.onclick = () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            updateButtonStates(false);
+        };
+
+        document.addEventListener('DOMContentLoaded', () => updateButtonStates(false));
+    </script>
+</body>
+</html>
+
