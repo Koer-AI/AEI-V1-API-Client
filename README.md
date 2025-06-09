@@ -7,7 +7,7 @@ This API allows you to classify the emotional content of an audio file. You prov
 
 To classify emotions, send a `POST` request to the following endpoint:
 
-**`POST https://api.yourcompany.com/v1/classify-emotion`**
+**`POST https://api.koer.ai/aei-v1/`**
 
 --- 
 ## 2. Authentication
